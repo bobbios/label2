@@ -35,9 +35,9 @@
     <Prefer32Bit>false</Prefer32Bit>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="POSLink2, Version=1.7.0.0, Culture=neutral, PublicKeyToken=dbf86e1b60761a1e, processorArchitecture=MSIL">
+    <Reference Include="POSLink2, Version=1.4.0.0, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\Register_copy\POSLink2\POSLink2.dll</HintPath>
+      <HintPath>lib\POSLink2.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
