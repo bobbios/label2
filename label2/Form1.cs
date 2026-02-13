@@ -18,6 +18,10 @@ using System.Threading;
 using System.IO;
 using System.Text.RegularExpressions;
 using System.Linq;
+using System.Reflection;
+using System.Collections.Generic;
+using POSLink2.Const;
+using POSLink2.Manage;   // Option A (most common for v2)
 
 
 
@@ -33,12 +37,13 @@ namespace label2
             InitializeComponent();
             PopulateSalespersonDropdown();
             txtPrinter.Text = GetPrinterPathFromRegistry();
+            textBox10.Text = "\\\\DESKTOP-HPLQJ4E\\SNBC";
             textBox1.Text = "Pks Payments";
             textBox2.Text = "Store : ";
             textBox3.Text = "Mid : ";
             txtAmount.Text = "5";
             txtInvoiceNum.Text = "35158415488";
-            txtIpAddress.Text = "192.168.1.183";
+            txtIpAddress.Text = "192.168.1.216";
 
 
             string[] saleType = { "CREDIT", "DEBIT", "EBT" };
@@ -130,7 +135,7 @@ namespace label2
             string line4 = comboBoxSalespersons.Text;
             // Get the number of copies from textBox5
             int copies;
-            if (!int.TryParse(textBox5.Text, out copies) || copies <= 0)
+            if (!int.TryParse(textBoxNumOfPrint.Text, out copies) || copies <= 0)
             {
                 MessageBox.Show("Please enter a valid number of copies.");
                 return;
@@ -162,10 +167,84 @@ namespace label2
         }
 
 
+
+        private void btnPrintDouble_Click(object sender, EventArgs e)
+        {
+            SavePrinterPathToRegistry(txtPrinter.Text);
+
+            string line1 = textBox1.Text;
+            string line2 = textBox2.Text;
+            string line3 = textBox3.Text;
+
+            int copies;
+            if (!int.TryParse(textBoxNumOfPrint.Text, out copies) || copies <= 0)
+            {
+                MessageBox.Show("Please enter a valid number of copies.");
+                return;
+            }
+
+            // EXACT same style as your main print method
+            string escPosCommands =
+                (char)27 + "A" + (char)49 + (char)50 + " " + line1 + "\r" +
+                (char)27 + "A" + (char)49 + (char)50 + " " + line2 + "\r" +
+                (char)27 + "A" + (char)49 + (char)50 + " " + line3 + "\r" +
+                (char)12;   // Form feed
+
+            try
+            {
+                for (int i = 0; i < copies; i++)
+                    RawPrinterHelper.SendStringToPrinter(txtPrinter.Text, escPosCommands);
+
+                MessageBox.Show("3-line label printed!");
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Error: " + ex.Message);
+            }
+        }
+
+
+        private void btnReallyBig_Click(object sender, EventArgs e)
+        {
+            SavePrinterPathToRegistry(txtPrinter.Text);
+
+            string line1 = textBox1.Text;
+            string line2 = textBox2.Text;
+
+            int copies;
+            if (!int.TryParse(textBoxNumOfPrint.Text, out copies) || copies <= 0)
+            {
+                MessageBox.Show("Please enter a valid number of copies.");
+                return;
+            }
+
+
+            // EXACT SAME FORMAT as your original print method
+            string escPosCommands =
+                (char)27 + "A" + (char)50 + (char)51 + " " +line1 + "\r" +
+                (char)27 + "A" + (char)50 + (char)51 + " " + line2 +  "\r" +
+                (char)12;  // New label
+
+            try
+            {
+                for (int i = 0; i < copies; i++)
+                    RawPrinterHelper.SendStringToPrinter(txtPrinter.Text, escPosCommands);
+
+                MessageBox.Show("BIG label printed!");
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Error: " + ex.Message);
+            }
+        }
+
+
+
+
         private void PopulateSalespersonDropdown()
         {
             // Example list of salesperson names
-            string[] salespersons = { "bob 215-868-2551", "Rayni 856-602-1491", "Keith Shin 267-407-7045" , "Andy T 267-918-1738" };
+            string[] salespersons = { "bob 215-868-2551", "Rayni 856-602-1491", "Keith Shin 267-407-7045", "Andy T 267-918-1738" };
 
             // Add items to the ComboBox
             comboBoxSalespersons.Items.AddRange(salespersons);
@@ -200,7 +279,7 @@ namespace label2
 
             // Initialize POSLink
             var poslink = POSLink2.POSLink2.GetPOSLink2();
-                  var terminal = poslink.GetTerminal(commSetting);
+            var terminal = poslink.GetTerminal(commSetting);
             if (terminal == null)
             {
                 MessageBox.Show("Failed to initialize terminal. Please check the IP address and connection settings.", "Initialization Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
@@ -232,39 +311,77 @@ namespace label2
                     {
                         var doCreditReq = new POSLink2.Transaction.DoCreditReq
                         {
-                            TransactionType = POSLink2.Const.TransType.Sale, // Replace "Sale" with the appropriate enum value
+                            TransactionType = POSLink2.Const.TransType.Sale,
                         };
-                        doCreditReq.AmountInformation.TransactionAmount = txtAmount.Text;
-                        doCreditReq.TraceInformation.EcrRefNum = txtInvoiceNum.Text;
 
-                        // Create the credit response
-                        var doCreditRsp = new POSLink2.Transaction.DoCreditRsp();
+                        // Ensure AmountInformation & TraceInformation exist
+                        var t = doCreditReq.GetType();
+                        var pAmt = t.GetProperty("AmountInformation");
+                        var pTrace = t.GetProperty("TraceInformation");
+                        var pBeh = t.GetProperty("TransactionBehavior");
 
-                        // Execute the DoCredit method
+                        if (pAmt != null && pAmt.GetValue(doCreditReq, null) == null)
+                            pAmt.SetValue(doCreditReq, Activator.CreateInstance(pAmt.PropertyType), null);
+                        if (pTrace != null && pTrace.GetValue(doCreditReq, null) == null)
+                            pTrace.SetValue(doCreditReq, Activator.CreateInstance(pTrace.PropertyType), null);
+                        if (pBeh != null && pBeh.GetValue(doCreditReq, null) == null)
+                            pBeh.SetValue(doCreditReq, Activator.CreateInstance(pBeh.PropertyType), null);
+
+                        // Set values via reflection (no dynamic)
+                        var amtObj = pAmt != null ? pAmt.GetValue(doCreditReq, null) : null;
+                        var traceObj = pTrace != null ? pTrace.GetValue(doCreditReq, null) : null;
+                        var behObj = pBeh != null ? pBeh.GetValue(doCreditReq, null) : null;
+
+                        if (amtObj != null)
+                        {
+                            var amtProp = amtObj.GetType().GetProperty("TransactionAmount");
+                            if (amtProp != null) amtProp.SetValue(amtObj, txtAmount.Text, null);
+                        }
+
+                        if (traceObj != null)
+                        {
+                            var ecrProp = traceObj.GetType().GetProperty("EcrRefNum");
+                            if (ecrProp != null) ecrProp.SetValue(traceObj, txtInvoiceNum.Text, null);
+                        }
+
+                        if (behObj != null)
+                        {
+                            var tipProp = behObj != null ? behObj.GetType().GetProperty("TipRequestFlag") : null;
+                            if (tipProp != null)
+                            {
+                                // valid values   0  no pretip,   1 = pretip
+                                tipProp.SetValue(behObj, "1", null);
+                                }
+
+                        }
+
+
+
+                        // Execute the DoCredit method (no need to instantiate rsp before 'out')
+                        POSLink2.Transaction.DoCreditRsp doCreditRsp;
                         var ret = terminal.Transaction.DoCredit(doCreditReq, out doCreditRsp);
                         var retResponse = doCreditRsp;
 
                         if (ret.GetErrorCode() == POSLink2.ExecutionResult.Code.Ok)
                         {
-                            // Access approval-related details using retResponse
-                            string approvalCode = retResponse.HostInformation?.HostResponseCode ?? "N/A";
-                            string responseCode = retResponse.ResponseCode;
-                            string responseMessage = retResponse.ResponseMessage;
-                            string traceNumber = retResponse.TraceInformation?.AuthorizationResponse ?? "N/A";
+                            string approvalCode = retResponse?.HostInformation?.HostResponseCode ?? "N/A";
+                            string responseCode = retResponse?.ResponseCode ?? "N/A";
+                            string responseMessage = retResponse?.ResponseMessage ?? "N/A";
 
-                            // Display the information
-                            string message = $"Approval Code: {approvalCode}\n" +
-                                             $"Response Code: {responseCode}\n" +
-                                             $"Response Message: {responseMessage}\n" +
-                                             $"Trace Number: {traceNumber}";
-                            MessageBox.Show(message, "Transaction Approved", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                            string message =
+                                $"Approval Code: {approvalCode}\n" +
+                                $"Response Code: {responseCode}\n" +
+                                $"Response Message: {responseMessage}";
+
+                            MessageBox.Show(message, "Transaction Approved",
+                                MessageBoxButtons.OK, MessageBoxIcon.Information);
                         }
                         else
                         {
-                            // Handle the error case and show more details if available
                             string errorCode = ret.GetErrorCode().ToString();
-                            string errorMsg = retResponse.ResponseMessage ?? "No additional error message available.";
-                            MessageBox.Show($"Error: {errorCode}\nMessage: {errorMsg}", "Transaction Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                            string errorMsg = retResponse?.ResponseMessage ?? "No additional error message available.";
+                            MessageBox.Show($"Error: {errorCode}\nMessage: {errorMsg}", "Transaction Error",
+                                MessageBoxButtons.OK, MessageBoxIcon.Error);
                         }
                         break;
                     }
@@ -272,6 +389,7 @@ namespace label2
                     {
                         break;
                     }
+
 
                 case ("DEBIT"):
                     if (saleReturn == "SALE")
@@ -386,7 +504,7 @@ namespace label2
                 default:
                     MessageBox.Show("Invalid transaction type or sale return type.");
                     break;
-           
+
             }
         }
 
@@ -395,8 +513,8 @@ namespace label2
             // Exits the entire application immediately
             Environment.Exit(0);
         }
-   
-      
+
+
 
 
         // Helper method to extract numeric data from the response
@@ -407,7 +525,7 @@ namespace label2
             return match.Success ? match.Value : "0.00"; // Return "0.00" if no match is found
         }
 
-       
+
 
         private void port_DataReceived(object sender, SerialDataReceivedEventArgs e)
         {
@@ -436,7 +554,7 @@ namespace label2
         private void btnTest1_Click(object sender, EventArgs e)
         {
             // Set the command to send
-           string command = "W\r\n";
+            string command = "W\r\n";
             // string command = "W\r\n";  // Adjust terminators if needed
             Console.WriteLine(command);
 
@@ -463,7 +581,7 @@ namespace label2
                 {
                     port.Open();
                     MessageBox.Show("COM1 port opened successfully.", "Connection Status");
-            
+
                 }
                 else
                 {
@@ -497,7 +615,7 @@ namespace label2
                 {
                     MessageBox.Show("No response received from the scale. Check the connection.", "Scale Communication");
                 }
-             
+
             }
             catch (Exception ex)
             {
@@ -506,7 +624,7 @@ namespace label2
         }
 
 
-      
+
 
         private void btnTestPassiveRead_Click(object sender, EventArgs e)
         {
@@ -548,10 +666,10 @@ namespace label2
         private void btnTestPort_Click(object sender, EventArgs e)
         {
             // Define possible values for each setting
-          //  int[] baudRates = { 9600, 19200, 38400, 57600, 115200 };
+            //  int[] baudRates = { 9600, 19200, 38400, 57600, 115200 };
             int[] baudRates = { 9600, 19200 };
             Parity[] parities = { Parity.None, Parity.Odd, Parity.Even };
-            int[] dataBitsOptions = { 7};
+            int[] dataBitsOptions = { 7 };
             StopBits[] stopBitsOptions = { StopBits.One };
             //StopBits[] stopBitsOptions = { StopBits.One, StopBits.OnePointFive, StopBits.Two };
             string command = "W\r\n"; // Sample command, adjust if needed
@@ -614,7 +732,7 @@ namespace label2
         private void btnTestCommand_Click(object sender, EventArgs e)
         {
             string[] commands = { "W" };
-          
+
             foreach (string command in commands)
             {
                 Console.WriteLine($"Testing command: {command}");
@@ -801,7 +919,7 @@ namespace label2
                                     if (match.Success)
                                     {
                                         // Extract the numeric weight part (e.g., "0.79")
-                                       weightValue = match.Groups[2].Value;
+                                        weightValue = match.Groups[2].Value;
                                         // Check if there's no decimal in the weight
                                         if (!weightValue.Contains("."))
                                         {
@@ -810,7 +928,7 @@ namespace label2
                                             weightValue = weightValue.Insert(length - 2, ".");
                                         }
                                         // Ignore zero values
-                                        if (weightValue != "0000.00" && weightValue != "0.00") 
+                                        if (weightValue != "0000.00" && weightValue != "0.00")
                                         {
 
                                             UpdateTextBox("Original value " + sanitizedResponse);
@@ -858,7 +976,7 @@ namespace label2
                 // Show a completion message on the UI thread
                 this.Invoke(new Action(() =>
                 {
-                    UpdateTextBox( "Process Complete : " + weightValue + "Weight capture complete.");
+                    UpdateTextBox("Process Complete : " + weightValue + "Weight capture complete.");
                 }));
             }
         }
@@ -927,7 +1045,8 @@ namespace label2
                 Console.WriteLine("Data from Diva scale: " + data);
 
                 // Display the received data in a TextBox or label if desired
-                this.Invoke(new Action(() => {
+                this.Invoke(new Action(() =>
+                {
                     lblScaleData.Text = "Received data: " + data;
                 }));
             }
@@ -1106,7 +1225,7 @@ namespace label2
 
                 // Create the batch close request
                 var batchCloseReq = new POSLink2.Batch.BatchCloseReq();
-                           // Execute the batch close
+                // Execute the batch close
                 var batchCloseRsp = new POSLink2.Batch.BatchCloseRsp();
                 var ret = terminal.Batch.BatchClose(batchCloseReq, out batchCloseRsp);
 
@@ -1207,8 +1326,428 @@ namespace label2
 
 
 
+        private void btnSearchTransaction_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                // Step 1: Set up communication settings
+                var commSetting = new POSLink2.CommSetting.TcpSetting
+                {
+                    Ip = txtIpAddress.Text, // Ensure this is the correct IP address of the PAX terminal
+                    Port = 10009,          // Default port for PAX terminals
+                    Timeout = 45000        // Timeout in milliseconds
+                };
 
+                // Step 2: Initialize POSLink and get terminal
+                var poslink = POSLink2.POSLink2.GetPOSLink2();
+                var terminal = poslink.GetTerminal(commSetting);
+                if (terminal == null)
+                {
+                    MessageBox.Show("Failed to initialize terminal. Check IP settings.",
+                                   "Initialization Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return;
+                }
+
+                // Step 3: Create Local Detail Report Request
+                var reportRequest = new POSLink2.Report.LocalDetailReportReq
+                {
+                    // Optionally set parameters to filter the report (e.g., date range, transaction type)
+                    // Example: reportRequest.DateRange = "YYYYMMDD-YYYYMMDD"; // If supported by POSLink2
+                };
+
+                // Step 4: Execute the request
+                POSLink2.Report.LocalDetailReportRsp reportResponse;
+                var ret = terminal.Report.LocalDetailReport(reportRequest, out reportResponse);
+
+                // Step 5: Check if request was successful
+                if (ret.GetErrorCode() == POSLink2.ExecutionResult.Code.Ok)
+                {
+                    StringBuilder reportDetails = new StringBuilder("Transaction Log:\n");
+                    reportDetails.AppendLine("--- Transactions ---");
+
+                    // Step 6: Check if response contains transaction data
+                    if (reportResponse != null && reportResponse.TraceInformation != null && reportResponse.AmountInformation != null)
+                    {
+                        // Single transaction (based on existing btnDebugLocalDetailReportReq_Click logic)
+                        string transactionNumber = reportResponse.TraceInformation?.EcrRefNum ?? "Unknown";
+                        string approvalCode = reportResponse.TraceInformation?.AuthorizationResponse ?? "N/A";
+                        string transactionAmount = reportResponse.AmountInformation?.ApproveAmount ?? "0.00";
+                        //string transactionType = reportResponse.TransactionType?.ToString() ?? "Unknown";
+                        string responseCode = reportResponse.ResponseCode ?? "N/A";
+                        string responseMessage = reportResponse.ResponseMessage ?? "N/A";
+                        //string timestamp = reportResponse.TraceInformation?.TransactionTime ?? "N/A";
+
+                        // Append transaction details to the output
+                        reportDetails.AppendLine($"Transaction ID: {transactionNumber}");
+                        //reportDetails.AppendLine($"Type: {transactionType}");
+                        reportDetails.AppendLine($"Amount: ${transactionAmount}");
+                        reportDetails.AppendLine($"Approval Code: {approvalCode}");
+                        reportDetails.AppendLine($"Response Code: {responseCode}");
+                        reportDetails.AppendLine($"Response Message: {responseMessage}");
+                        //reportDetails.AppendLine($"Timestamp: {timestamp}");
+                        reportDetails.AppendLine("---------------------------------");
+                    }
+                    else
+                    {
+                        reportDetails.AppendLine("No transactions found in the report.");
+                    }
+
+                    // Step 7: Display the transaction list
+                    MessageBox.Show(reportDetails.ToString(), "Transaction Log", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
+                else
+                {
+                    // Handle error case
+                    string errorCode = ret.GetErrorCode().ToString();
+                    string errorMsg = reportResponse?.ResponseMessage ?? "Unknown error";
+                    MessageBox.Show($"Error retrieving transactions: {errorCode} - {errorMsg}",
+                                   "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Error retrieving Transaction Log: " + ex.Message,
+                               "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+
+
+
+
+        private void btnPreAddTip_Click(object sender, EventArgs e)
+        {
+         
+        }
+
+        private static string AsciiToHex(string s)
+        {
+            var sb = new StringBuilder(s.Length * 2);
+            foreach (var c in s) sb.Append(((int)c).ToString("X2"));
+            return sb.ToString();
+        }
+        private static string HexToAscii(string hex)
+        {
+            hex = hex.Replace(" ", "");
+            var bytes = new byte[hex.Length / 2];
+            for (int i = 0; i < bytes.Length; i++)
+                bytes[i] = Convert.ToByte(hex.Substring(i * 2, 2), 16);
+            return Encoding.ASCII.GetString(bytes);
+        }
+
+
+        private void btnPassThru_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                // Open terminal (same as your other buttons)
+                var commSetting = new POSLink2.CommSetting.TcpSetting
+                {
+                    Ip = txtIpAddress.Text,
+                    Port = 10009,
+                    Timeout = 45000
+                };
+                var poslink = POSLink2.POSLink2.GetPOSLink2();
+                var terminal = poslink.GetTerminal(commSetting);
+                if (terminal == null)
+                {
+                    MessageBox.Show("Failed to initialize terminal. Check IP/port.", "Init Error",
+                        MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return;
+                }
+
+                // Build Passthru payload: 09(GetInput) 01(numeric) 00(min) 0A(max=10) + ASCII prompt
+                string prompt = "Enter Phone Number:";
+                string payloadHex = "09" + "01" + "00" + "0A" + AsciiToHex(prompt);
+
+                // --------- Reflection block (handles SDKs where namespace/type names differ) ----------
+                // Find PassThru req/rsp types anywhere under POSLink2.*
+                var asmList = AppDomain.CurrentDomain.GetAssemblies()
+                                 .Where(a => a.GetName().Name.StartsWith("POSLink2"))
+                                 .ToList();
+
+                Type reqType = asmList.SelectMany(a => a.GetTypes())
+                                      .FirstOrDefault(t => t.Name.Equals("PassThruReq", StringComparison.OrdinalIgnoreCase));
+                Type rspType = asmList.SelectMany(a => a.GetTypes())
+                                      .FirstOrDefault(t => t.Name.Equals("PassThruRsp", StringComparison.OrdinalIgnoreCase));
+
+                if (reqType == null || rspType == null)
+                {
+                    MessageBox.Show("Passthru types not found in this POSLink2 build.", "SDK Missing Types",
+                        MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return;
+                }
+
+                // Create req/rsp
+                object req = Activator.CreateInstance(reqType);
+                object rsp = Activator.CreateInstance(rspType);
+
+                // Set req.PassthruData
+                var passthruDataProp = reqType.GetProperty("PassthruData");
+                if (passthruDataProp == null)
+                {
+                    MessageBox.Show("Req.PassthruData property not found.", "SDK Incompatibility",
+                        MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return;
+                }
+                passthruDataProp.SetValue(req, payloadHex);
+
+                // Get terminal.Utility (or similar) object
+                // Try common property names: "Utility", "Util"
+                var utilObj = terminal.GetType().GetProperty("Utility")?.GetValue(terminal)
+                            ?? terminal.GetType().GetProperty("Util")?.GetValue(terminal);
+
+                if (utilObj == null)
+                {
+                    MessageBox.Show("Terminal.Utility service not found in this SDK build.", "SDK Incompatibility",
+                        MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return;
+                }
+
+                // Find method: PassThru(req, out rsp) or PassThrough(...)
+                var utilType = utilObj.GetType();
+                var mPass = utilType.GetMethods(BindingFlags.Public | BindingFlags.Instance)
+                                    .FirstOrDefault(m =>
+                                        (m.Name.Equals("PassThru", StringComparison.OrdinalIgnoreCase) ||
+                                         m.Name.Equals("PassThrough", StringComparison.OrdinalIgnoreCase)) &&
+                                        m.GetParameters().Length == 2);
+
+                if (mPass == null)
+                {
+                    MessageBox.Show("Utility.PassThru method not found.", "SDK Incompatibility",
+                        MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return;
+                }
+
+                // Prepare args: first is req, second is 'out rsp'
+                object[] args = new object[] { req, null };
+
+                // Call PassThru
+                var ret = mPass.Invoke(utilObj, args);
+                rsp = args[1]; // out param
+
+                // ret usually has GetErrorCode(); try to read it
+                var getErr = ret?.GetType().GetMethod("GetErrorCode");
+                var code = getErr?.Invoke(ret, null);
+                string codeStr = code?.ToString() ?? "";
+
+                // Try to detect success
+                bool success = codeStr.Equals("Ok", StringComparison.OrdinalIgnoreCase) ||
+                               codeStr.EndsWith(".Ok", StringComparison.OrdinalIgnoreCase) ||
+                               codeStr == "0"; // some builds return numeric OK
+
+                if (success)
+                {
+                    // rsp.PassthruData -> hex or ascii depending on firmware
+                    var rspDataProp = rspType.GetProperty("PassthruData");
+                    string raw = rspDataProp?.GetValue(rsp)?.ToString() ?? "";
+
+                    // Try to decode hex; if it fails, keep raw
+                    string ascii;
+                    try { ascii = HexToAscii(raw); }
+                    catch { ascii = raw; }
+
+                    // Keep digits only for phone
+                    string phone = System.Text.RegularExpressions.Regex.Replace(ascii, @"\D", "");
+                    MessageBox.Show($"Customer phone: {phone}", "Phone Captured", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
+                else
+                {
+                    // Try to show response message
+                    var rspMsg = rspType.GetProperty("ResponseMessage")?.GetValue(rsp)?.ToString();
+                    MessageBox.Show($"Passthru failed: {codeStr}\n{rspMsg}", "Passthru Error",
+                        MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+                // --------------------------------------------------------------------------------------
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Exception in Passthru: " + ex.Message, "Error",
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private void button2_Click(object sender, EventArgs e)
+        {
+
+            bool showDate = checkBoxDate.Checked;
+            string dateText = DateTime.Now.ToString("MM/dd/yyyy");
+            int lines = GetIntSafe(comboBoxLines.Text, 1, 4, 2);
+            int copies = GetIntSafe(textBoxNumOfPrint.Text, 1, 50, 1);
+
+            bool reverse = chkBoxReverseText.Checked;
+            string textMode = reverse ? "R" : "N";
+
+            // Put your 4 possible lines here (you said textbox4 is now comboBoxSalespersons)
+            string[] items = new[]
+            {
+        textBox1.Text,                 // line 1
+        textBox2.Text, // line 2
+                textBox3.Text,
+        comboBoxSalespersons.Text  
+          
+    };
+
+            // Label: 2" wide x 1" tall (203dpi)
+            const int labelWidthDots = 406; // 2 * 203
+            const int labelHeightDots = 203; // 1 * 203
+
+            int x = 20;
+            int topMargin = showDate ? 40 : 8;
+            int gap = 6; // <<< small space between lines (dots)
+
+            // Font settings (EPL "A" command)
+            int font = 4;
+
+            // We keep width multiplier reasonable, and scale height multiplier to fill the label
+            int wMult = 2;
+
+            // Font 4 base height in dots (approx). If you switch fonts, tweak this.
+            const int baseFontHeightDots = 20;
+
+            // Compute a height multiplier that fills the label nicely for 1–4 lines
+            int available = labelHeightDots - topMargin - 6 - ((lines - 1) * gap);
+            int hMult = Math.Max(1, Math.Min(4, available / (lines * baseFontHeightDots)));
+            if (hMult < 1) hMult = 1;
+
+            // Estimate how many characters fit per line so reverse padding fills the width
+            // (Font 4 base char width ~12 dots; multiplied by wMult)
+            int maxChars = CalcMaxChars(labelWidthDots, x, font, wMult);
+
+            // Compute Y positions based on computed line height
+            int lineHeight = baseFontHeightDots * hMult;
+            int[] yPos = new int[lines];
+            for (int i = 0; i < lines; i++)
+                yPos[i] = topMargin + i * (lineHeight + gap);
+
+            var sb = new StringBuilder();
+            sb.Append("N\r\n");
+            sb.Append("q406\r\n");        // print width
+            sb.Append("Q203,16\r\n");     // label height, gap (adjust 16 if needed)
+
+            if (showDate)
+            {
+                int dateFont = 4;   // same font as main text
+                int dateW = 1;      // width multiplier
+                int dateH = 1;      // height multiplier (BIG)
+
+                int dateX = 20;     // TOP-LEFT
+                int dateY = 4;
+
+                sb.Append(
+                    $"A{dateX},{dateY},0,{dateFont},{dateW},{dateH},N,\"{dateText}\"\r\n"
+                );
+            }
+
+            for (int i = 0; i < lines; i++)
+            {
+                string txt = (i < items.Length) ? (items[i] ?? "") : "";
+                if (string.IsNullOrWhiteSpace(txt)) continue;
+
+                txt = txt.Trim();
+
+                // If reverse, pad with spaces so the black background fills the line width
+                string printable = reverse
+                    ? PadOrTrim(txt, maxChars)
+                    : TrimTo(txt, maxChars);
+
+                sb.Append($"A{x},{yPos[i]},0,{font},{wMult},{hMult},{textMode},\"{printable}\"\r\n");
+            }
+
+            sb.Append($"P{copies}\r\n");
+
+            bool ok = SnbcRawPrinterHelper.SendRawString(textBox10.Text, sb.ToString(), out string err);
+            //MessageBox.Show(ok ? "SNBC EPL SENT" : ("SNBC FAILED:\r\n" + err));
+        }
+
+        // ---------- helpers ----------
+        private static int GetIntSafe(string s, int min, int max, int fallback)
+        {
+            if (!int.TryParse(s, out int v)) return fallback;
+            if (v < min) return min;
+            if (v > max) return max;
+            return v;
+        }
+
+        private static int CalcMaxChars(int labelWidthDots, int x, int font, int wMult)
+        {
+            // Rough estimate: font 4 char width ~12 dots.
+            // If you change font, tweak baseCharWidthDots.
+            int baseCharWidthDots = (font == 4) ? 12 : 10;
+            int usable = Math.Max(0, labelWidthDots - x - 10);
+            int perChar = baseCharWidthDots * Math.Max(1, wMult);
+            int chars = usable / Math.Max(1, perChar);
+            return Math.Max(6, chars); // minimum safety
+        }
+
+        private static string PadOrTrim(string s, int maxChars)
+        {
+            if (maxChars <= 0) return "";
+            s = s ?? "";
+            if (s.Length > maxChars) return s.Substring(0, maxChars);
+            return s.PadRight(maxChars, ' '); // <<< reverse fill via spaces
+        }
+
+        private static string TrimTo(string s, int maxChars)
+        {
+            if (maxChars <= 0) return "";
+            s = s ?? "";
+            if (s.Length > maxChars) return s.Substring(0, maxChars);
+            return s;
+        }
+
+
+        private void btnSnbcHello_Click(object sender, EventArgs e)
+        {
+            string itemName = "pepsi soda";
+            string upc = "12345"; // use Code128 for short codes
+
+            string epl =
+                "N\r\n" +
+                "q640\r\n" +
+                "Q180,0\r\n" +
+                // Text line 1
+                $"A20,15,0,4,1,1,N,\"{EscapeEpl(itemName)}\"\r\n" +    // prints pepsi soda
+                                                                       // Text line 2
+
+//                Value   Meaning
+//20,90   Position
+//0   Rotation
+//3   Barcode type → Code 128
+//2   Narrow bar width
+//6   Wide bar width
+//100 Barcode height
+//B Human-readable text below
+//"12345" Barcode data
+
+
+                $"A20,55,0,3,1,1,N,\"UPC: {EscapeEpl(upc)}\"\r\n" +    // prints upc 12345
+                // Barcode (Code128 style, like your support example)
+                $"B20,90,0,3,2,6,100,B,\"{EscapeEpl(upc)}\"\r\n" +     //prints barcode   
+                "P1\r\n";
+                bool ok = SnbcRawPrinterHelper.SendRawString(textBox10.Text, epl, out string err);
+            MessageBox.Show(ok ? "SNBC EPL SENT" : ("SNBC FAILED:\r\n" + err));
+        }
+
+        private static string EscapeEpl(string s)
+        {
+            // EPL uses quotes around strings; avoid breaking format
+            return (s ?? "").Replace("\"", "");
+        }
+
+        private void label3_Click(object sender, EventArgs e)
+        {
+
+        }
+
+    
     }
 
+}
 
+namespace POSLink2.Const
+{
+    class TipRequestFlag
+    {
+    }
 }

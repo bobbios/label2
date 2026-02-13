@@ -60,6 +60,7 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="RawPrinterHelper.cs" />
     <Compile Include="ScaleReader.cs" />
+    <Compile Include="SnbcRawPrinterHelper.cs" />
     <Compile Include="TerminalLogger.cs" />
     <EmbeddedResource Include="Form1.resx">
       <DependentUpon>Form1.cs</DependentUpon>
