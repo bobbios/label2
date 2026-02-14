@@ -73,7 +73,7 @@
             this.btnSendReset = new System.Windows.Forms.Button();
             this.btnSendGetSentryStatus = new System.Windows.Forms.Button();
             this.btnBatchClose = new System.Windows.Forms.Button();
-            this.button1 = new System.Windows.Forms.Button();
+            this.btnGetLastTransactin = new System.Windows.Forms.Button();
             this.btnSearchTransaction = new System.Windows.Forms.Button();
             this.btnPreAddTip = new System.Windows.Forms.Button();
             this.btnPassThru = new System.Windows.Forms.Button();
@@ -473,33 +473,30 @@
             this.btnBatchClose.UseVisualStyleBackColor = true;
             this.btnBatchClose.Click += new System.EventHandler(this.btnBatchClose_Click);
             // 
-            // button1
+            // btnGetLastTransactin
             // 
-            this.button1.Location = new System.Drawing.Point(484, 384);
-            this.button1.Name = "button1";
-            this.button1.Size = new System.Drawing.Size(184, 28);
-            this.button1.TabIndex = 53;
-            this.button1.Text = "get transactions";
-            this.button1.UseVisualStyleBackColor = true;
-            this.button1.Click += new System.EventHandler(this.btnDebugLocalDetailReportReq_Click);
+            this.btnGetLastTransactin.Location = new System.Drawing.Point(484, 384);
+            this.btnGetLastTransactin.Name = "btnGetLastTransactin";
+            this.btnGetLastTransactin.Size = new System.Drawing.Size(184, 28);
+            this.btnGetLastTransactin.TabIndex = 53;
+            this.btnGetLastTransactin.Text = "get last transactions";
+            this.btnGetLastTransactin.UseVisualStyleBackColor = true;
+            this.btnGetLastTransactin.Click += new System.EventHandler(this.btnGetLastTransactin_Click);
             // 
             // btnSearchTransaction
             // 
-            this.btnSearchTransaction.Location = new System.Drawing.Point(484, 418);
+            this.btnSearchTransaction.Location = new System.Drawing.Point(0, 0);
             this.btnSearchTransaction.Name = "btnSearchTransaction";
-            this.btnSearchTransaction.Size = new System.Drawing.Size(184, 32);
-            this.btnSearchTransaction.TabIndex = 54;
-            this.btnSearchTransaction.Text = "searchTransaction";
-            this.btnSearchTransaction.UseVisualStyleBackColor = true;
-            this.btnSearchTransaction.Click += new System.EventHandler(this.btnSearchTransaction_Click);
+            this.btnSearchTransaction.Size = new System.Drawing.Size(75, 23);
+            this.btnSearchTransaction.TabIndex = 67;
             // 
             // btnPreAddTip
             // 
-            this.btnPreAddTip.Location = new System.Drawing.Point(484, 456);
+            this.btnPreAddTip.Location = new System.Drawing.Point(439, 456);
             this.btnPreAddTip.Name = "btnPreAddTip";
-            this.btnPreAddTip.Size = new System.Drawing.Size(93, 32);
+            this.btnPreAddTip.Size = new System.Drawing.Size(138, 32);
             this.btnPreAddTip.TabIndex = 55;
-            this.btnPreAddTip.Text = "preAddTip";
+            this.btnPreAddTip.Text = "preAddTip/not working";
             this.btnPreAddTip.UseVisualStyleBackColor = true;
             this.btnPreAddTip.Click += new System.EventHandler(this.btnPreAddTip_Click);
             // 
@@ -631,7 +628,7 @@
             this.Controls.Add(this.btnPassThru);
             this.Controls.Add(this.btnPreAddTip);
             this.Controls.Add(this.btnSearchTransaction);
-            this.Controls.Add(this.button1);
+            this.Controls.Add(this.btnGetLastTransactin);
             this.Controls.Add(this.btnBatchClose);
             this.Controls.Add(this.btnSendGetSentryStatus);
             this.Controls.Add(this.btnSendReset);
@@ -730,7 +727,7 @@
         private System.Windows.Forms.Button btnSendReset;
         private System.Windows.Forms.Button btnSendGetSentryStatus;
         private System.Windows.Forms.Button btnBatchClose;
-        private System.Windows.Forms.Button button1;
+        private System.Windows.Forms.Button btnGetLastTransactin;
         private System.Windows.Forms.Button btnSearchTransaction;
         private System.Windows.Forms.Button btnPreAddTip;
         private System.Windows.Forms.Button btnPassThru;
