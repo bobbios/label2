@@ -243,42 +243,7 @@ namespace label2
             AppSettingsStore.Save(s);
         }
 
-        private void btnPrint_Click(object sender, EventArgs e)
-        {
-            SaveLocalSettingsFile();
-
-            string line1 = textBox1.Text;
-            string line2 = textBox2.Text;
-            string line3 = textBox3.Text;
-            string line4 = comboBoxSalespersons.Text;
-
-            int copies;
-            if (!int.TryParse(textBoxNumOfPrint.Text, out copies) || copies <= 0)
-            {
-                MessageBox.Show("Please enter a valid number of copies.");
-                return;
-            }
-
-            try
-            {
-                // Build the ESC/POS command string
-                string escPosCommands =
-                    (char)27 + "A" + (char)49 + (char)49 + line1 + "\r" +
-                    (char)27 + "A" + (char)49 + (char)50 + line2 + "\r" +
-                    (char)27 + "A" + (char)49 + (char)50 + line3 + "\r" +
-                    (char)27 + "A" + (char)49 + (char)50 + line4 + "\r" +
-                    (char)12; // Form feed (new page)
-
-                for (int i = 0; i < copies; i++)
-                    RawPrinterHelper.SendStringToPrinter(txtPrinter.Text, escPosCommands);
-
-                MessageBox.Show("Print job sent successfully!");
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show("Failed to send print job: " + ex.Message);
-            }
-        }
+      
 
         private void btnPrintDouble_Click(object sender, EventArgs e)
         {
@@ -1604,7 +1569,59 @@ namespace label2
             }
         }
 
-        private void button2_Click(object sender, EventArgs e)
+
+
+
+        private void btnZebra_Click(object sender, EventArgs e)
+        {
+            SaveLocalSettingsFile();
+
+            bool showDate = checkBoxDate.Checked;
+            string dateText = DateTime.Now.ToString("MM/dd/yyyy");
+
+            int copies = GetIntSafe(textBoxNumOfPrint.Text, 1, 50, 1);
+
+            string line1 = CleanLine(textBox1.Text);
+            string line2 = CleanLine(textBox2.Text);
+            string line3 = CleanLine(textBox3.Text);
+            string line4 = CleanLine(comboBoxSalespersons.Text);
+
+            // Build the ESC/POS command string (same style you had)
+            var sb = new StringBuilder();
+
+            if (showDate)
+                sb.Append((char)27).Append("A").Append((char)49).Append((char)49).Append(dateText).Append("\r");
+
+            sb.Append((char)27).Append("A").Append((char)49).Append((char)49).Append(line1).Append("\r");
+            sb.Append((char)27).Append("A").Append((char)49).Append((char)50).Append(line2).Append("\r");
+            sb.Append((char)27).Append("A").Append((char)49).Append((char)50).Append(line3).Append("\r");
+            sb.Append((char)27).Append("A").Append((char)49).Append((char)50).Append(line4).Append("\r");
+
+            sb.Append((char)12); // form feed (new page)
+
+            string escPosCommands = sb.ToString();
+
+            try
+            {
+                for (int i = 0; i < copies; i++)
+                    RawPrinterHelper.SendStringToPrinter(txtPrinter.Text, escPosCommands);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Failed to send print job: " + ex.Message);
+            }
+        }
+
+        // Remove CR/LF so the printer command stream doesn't break
+        private static string CleanLine(string s)
+        {
+            s = (s ?? "").Trim();
+            return s.Replace("\r", " ").Replace("\n", " ");
+        }
+
+
+
+        private void btnSnbc_Click(object sender, EventArgs e)
         {
             SaveLocalSettingsFile();
 
@@ -1714,23 +1731,7 @@ namespace label2
             return s;
         }
 
-        private void btnSnbcHello_Click(object sender, EventArgs e)
-        {
-            string itemName = "pepsi soda";
-            string upc = "12345";
 
-            string epl =
-                "N\r\n" +
-                "q640\r\n" +
-                "Q180,0\r\n" +
-                $"A20,15,0,4,1,1,N,\"{EscapeEpl(itemName)}\"\r\n" +
-                $"A20,55,0,3,1,1,N,\"UPC: {EscapeEpl(upc)}\"\r\n" +
-                $"B20,90,0,3,2,6,100,B,\"{EscapeEpl(upc)}\"\r\n" +
-                "P1\r\n";
-
-            bool ok = SnbcRawPrinterHelper.SendRawString(textBox10.Text, epl, out string err);
-            MessageBox.Show(ok ? "SNBC EPL SENT" : ("SNBC FAILED:\r\n" + err));
-        }
 
         private static string EscapeEpl(string s)
         {
@@ -1801,9 +1802,10 @@ namespace label2
             return sb.ToString();
         }
 
+        private void groupBox1_Enter(object sender, EventArgs e)
+        {
 
-
-
+        }
     }
 }
 
