@@ -1635,11 +1635,11 @@ namespace label2
 
             string[] items = new[]
             {
-                textBox1.Text,
-                textBox2.Text,
-                textBox3.Text,
-                comboBoxSalespersons.Text
-            };
+        textBox1.Text,
+        textBox2.Text,
+        textBox3.Text,
+        comboBoxSalespersons.Text
+    };
 
             const int labelWidthDots = 406;   // 2" at 203dpi
             const int labelHeightDots = 203;  // 1" at 203dpi
@@ -1649,15 +1649,29 @@ namespace label2
             int gap = 6;
 
             int font = 4;
-            int wMult = 2;
-            const int baseFontHeightDots = 20;
 
-            int available = labelHeightDots - topMargin - 6 - ((lines - 1) * gap);
-            int hMult = Math.Max(1, Math.Min(4, available / (lines * baseFontHeightDots)));
+            // ✅ RULE:
+            // 1-2 lines => double size
+            // 3-4 lines => normal size
+            int wMult;
+            int hMult;
+
+            if (lines <= 2)
+            {
+                wMult = 1;  // less width
+                hMult = 2;  // taller
+            }
+            else
+            {
+                wMult = 1;  // normal width
+                hMult = 1;  // normal height
+            }
 
             int maxChars = CalcMaxChars(labelWidthDots, x, font, wMult);
 
+            const int baseFontHeightDots = 20;
             int lineHeight = baseFontHeightDots * hMult;
+
             int[] yPos = new int[lines];
             for (int i = 0; i < lines; i++)
                 yPos[i] = topMargin + i * (lineHeight + gap);
@@ -1697,6 +1711,7 @@ namespace label2
             bool ok = SnbcRawPrinterHelper.SendRawString(textBox10.Text, sb.ToString(), out string err);
             // MessageBox.Show(ok ? "SNBC EPL SENT" : ("SNBC FAILED:\r\n" + err));
         }
+
 
         private static int GetIntSafe(string s, int min, int max, int fallback)
         {
